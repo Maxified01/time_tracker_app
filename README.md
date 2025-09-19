@@ -1,16 +1,27 @@
-# time_tracker_app
+# ⏱️ Time Tracker App
 
-A new Flutter project.
+A Flutter application for tracking how you spend your time.  
+Easily log tasks, view summaries, and stay productive — all in a beautiful, responsive UI.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## ✨ Features
+- ✅ Add, edit, and delete time entries  
+- 📊 View daily/weekly/monthly summaries  
+- 🗂️ Categorize tasks (e.g., Work, Study, Exercise)  
+- 🎨 Clean and responsive Flutter UI (works on Android, iOS, Web, Desktop)  
+- 💾 Persistent local storage (Hive/SQLite/Firebase – depending on setup)  
 
-A few resources to get you started if this is your first Flutter project:
+---
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 🚀 Getting Started
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 1. Prerequisites
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.x or later recommended)  
+- [VS Code](https://code.visualstudio.com/)  
+- Used real device for testing  
+
+Check Flutter setup:
+```bash
+flutter doctor
+
