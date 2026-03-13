@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-// ignore: depend_on_referenced_packages
-import 'package:path_provider/path_provider.dart' as path_provider;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final appDocumentDirectory =
-      await path_provider.getApplicationDocumentsDirectory();
-
-  Hive.init(appDocumentDirectory.path);
+  await Hive.initFlutter();
 
   await Hive.openBox('projects');
   await Hive.openBox('tasks');
@@ -25,90 +19,52 @@ class TimeTrackerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Time Tracker',
+      title: "Time Tracker",
       debugShowCheckedModeBanner: false,
-
       theme: ThemeData(
         primaryColor: const Color(0xFF0D47A1),
         scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D47A1),
-          primary: const Color(0xFF0D47A1),
-          secondary: const Color(0xFF1565C0),
-        ),
-
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF0D47A1),
           foregroundColor: Colors.white,
-          elevation: 2,
         ),
-
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
           backgroundColor: Color(0xFF1565C0),
-          foregroundColor: Colors.white,
-        ),
-
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1565C0),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
         ),
       ),
-
       home: const HomeScreen(),
     );
   }
 }
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 /// HOME SCREEN
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final projectsBox = Hive.box('projects');
-  final tasksBox = Hive.box('tasks');
-  final entriesBox = Hive.box('entries');
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Time Tracker'),
-      ),
+    final entriesBox = Hive.box('entries');
 
-//////////////////////////////////////////////////////////////
-/// DRAWER
-//////////////////////////////////////////////////////////////
+    return Scaffold(
+      appBar: AppBar(title: const Text("Time Tracker")),
 
       drawer: Drawer(
         child: ListView(
           children: [
             const DrawerHeader(
-              decoration: BoxDecoration(
-                color: Color(0xFF0D47A1),
-              ),
+              decoration: BoxDecoration(color: Color(0xFF0D47A1)),
               child: Text(
-                'Menu',
-                style: TextStyle(fontSize: 24, color: Colors.white),
+                "Menu",
+                style: TextStyle(color: Colors.white, fontSize: 24),
               ),
             ),
 
             ListTile(
               leading: const Icon(Icons.folder, color: Color(0xFF0D47A1)),
-              title: const Text('Projects'),
+              title: const Text("Projects"),
               onTap: () {
                 Navigator.push(
                   context,
@@ -119,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             ListTile(
               leading: const Icon(Icons.task, color: Color(0xFF0D47A1)),
-              title: const Text('Tasks'),
+              title: const Text("Tasks"),
               onTap: () {
                 Navigator.push(
                   context,
@@ -131,87 +87,55 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
 
-//////////////////////////////////////////////////////////////
-/// BODY
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+/// ENTRY LIST
+////////////////////////////////////////////////////////////
 
       body: ValueListenableBuilder(
         valueListenable: entriesBox.listenable(),
-        builder: (context, Box entries, _) {
-          if (entries.isEmpty) {
+        builder: (context, Box box, _) {
+          if (box.isEmpty) {
             return const Center(
               child: Text(
-                'No time entries yet',
-                style: TextStyle(fontSize: 18, color: Color(0xFF0D47A1)),
+                "No time entries yet",
+                style: TextStyle(fontSize: 18),
               ),
             );
           }
 
-          Map<String, List<Map>> groupedEntries = {};
+          return ListView.builder(
+            itemCount: box.length,
+            itemBuilder: (context, index) {
+              final key = box.keyAt(index);
+              final entry = box.get(key);
 
-          for (var key in entries.keys) {
-            var entry = entries.get(key);
-
-            String project = entry['project'] ?? 'No Project';
-
-            groupedEntries[project] ??= [];
-
-            groupedEntries[project]!
-                .add({...Map<String, dynamic>.from(entry), 'key': key});
-          }
-
-          return ListView(
-            padding: const EdgeInsets.all(12),
-            children: groupedEntries.entries.map((group) {
-              return ExpansionTile(
-                textColor: const Color(0xFF0D47A1),
-                collapsedTextColor: const Color(0xFF0D47A1),
-                backgroundColor: const Color(0xFFE3F2FD),
-                collapsedBackgroundColor: Colors.white,
-
-                title: Text(
-                  group.key,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+              return Card(
+                margin: const EdgeInsets.all(10),
+                child: ListTile(
+                  title: Text(
+                    "${entry['task']} • ${entry['time']} hrs",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    "${entry['project']} \n${entry['date']}",
+                  ),
+                  isThreeLine: true,
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () {
+                      box.delete(key);
+                    },
+                  ),
                 ),
-
-                children: group.value.map((entry) {
-                  return Card(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    margin:
-                        const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                    color: Colors.white,
-
-                    child: ListTile(
-                      title: Text(
-                        '${entry['task'] ?? 'No Task'} - ${entry['time']}h',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0D47A1),
-                        ),
-                      ),
-
-                      subtitle: Text(entry['notes'] ?? ''),
-
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete,
-                            color: Color(0xFF1565C0)),
-                        onPressed: () {
-                          entriesBox.delete(entry['key']);
-                        },
-                      ),
-                    ),
-                  );
-                }).toList(),
               );
-            }).toList(),
+            },
           );
         },
       ),
 
-//////////////////////////////////////////////////////////////
-/// FAB
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+/// ADD ENTRY BUTTON
+////////////////////////////////////////////////////////////
 
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
@@ -226,9 +150,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 /// ADD ENTRY SCREEN
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
 class AddEntryScreen extends StatefulWidget {
   const AddEntryScreen({super.key});
@@ -240,176 +164,131 @@ class AddEntryScreen extends StatefulWidget {
 class _AddEntryScreenState extends State<AddEntryScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  String? selectedProject;
-  String? selectedTask;
-  double? time;
-  String? notes;
-
-  DateTime date = DateTime.now();
-
   final projectsBox = Hive.box('projects');
   final tasksBox = Hive.box('tasks');
   final entriesBox = Hive.box('entries');
 
+  String? selectedProject;
+  String? selectedTask;
+
+  double? time;
+  String notes = "";
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Add Time Entry')),
+    List projects = projectsBox.values.toList();
+    List tasks = tasksBox.values.toList();
 
+    return Scaffold(
+      appBar: AppBar(title: const Text("Add Entry")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-
           child: ListView(
             children: [
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 /// TIME FIELD
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
               TextFormField(
                 decoration: const InputDecoration(
-                  labelText: 'Total time (hours)',
-                  filled: true,
-                  fillColor: Colors.white,
+                  labelText: "Hours Spent",
                   border: OutlineInputBorder(),
                 ),
-
                 keyboardType: TextInputType.number,
-
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter time';
-                  }
-
-                  if (double.tryParse(value) == null) {
-                    return 'Enter a valid number';
-                  }
-
-                  return null;
-                },
-
-                onSaved: (value) => time = double.tryParse(value ?? '0'),
+                validator: (value) =>
+                    value!.isEmpty ? "Enter time" : null,
+                onSaved: (value) => time = double.parse(value!),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 15),
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 /// PROJECT DROPDOWN
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
-                  labelText: 'Project',
-                  filled: true,
-                  fillColor: Colors.white,
+                  labelText: "Project",
                   border: OutlineInputBorder(),
                 ),
-
-                items: projectsBox.values
-                    .map<DropdownMenuItem<String>>((project) {
+                items: projects.map((p) {
                   return DropdownMenuItem(
-                    value: project.toString(),
-                    child: Text(project.toString()),
+                    value: p.toString(),
+                    child: Text(p.toString()),
                   );
                 }).toList(),
-
-                onChanged: (val) => selectedProject = val,
+                onChanged: (value) {
+                  setState(() {
+                    selectedProject = value;
+                  });
+                },
+                validator: (value) =>
+                    value == null ? "Select project" : null,
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 15),
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 /// TASK DROPDOWN
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
-                  labelText: 'Task',
-                  filled: true,
-                  fillColor: Colors.white,
+                  labelText: "Task",
                   border: OutlineInputBorder(),
                 ),
-
-                items: tasksBox.values.map<DropdownMenuItem<String>>((task) {
+                items: tasks.map((t) {
                   return DropdownMenuItem(
-                    value: task.toString(),
-                    child: Text(task.toString()),
+                    value: t.toString(),
+                    child: Text(t.toString()),
                   );
                 }).toList(),
-
-                onChanged: (val) => selectedTask = val,
+                onChanged: (value) {
+                  setState(() {
+                    selectedTask = value;
+                  });
+                },
+                validator: (value) =>
+                    value == null ? "Select task" : null,
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 15),
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 /// NOTES
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
               TextFormField(
                 decoration: const InputDecoration(
-                  labelText: 'Notes',
-                  filled: true,
-                  fillColor: Colors.white,
+                  labelText: "Notes",
                   border: OutlineInputBorder(),
                 ),
-
-                onSaved: (value) => notes = value,
+                onChanged: (value) => notes = value,
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
 
-//////////////////////////////////////////////////////////////
-/// DATE PICKER
-//////////////////////////////////////////////////////////////
-
-              ListTile(
-                tileColor: const Color(0xFFE3F2FD),
-
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-
-                title: Text(
-                  'Date: ${date.toLocal().toString().split(' ')[0]}',
-                ),
-
-                trailing: const Icon(Icons.calendar_today),
-
-                onTap: () async {
-                  DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: date,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-
-                  if (picked != null) {
-                    setState(() => date = picked);
-                  }
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-//////////////////////////////////////////////////////////////
-/// ADD BUTTON
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+/// SAVE BUTTON
+////////////////////////////////////////////////////////////
 
               ElevatedButton(
-                child: const Text('Add Entry'),
-
+                child: const Text("Save Entry"),
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
 
                     entriesBox.add({
-                      'time': time,
-                      'project': selectedProject,
-                      'task': selectedTask,
-                      'notes': notes,
-                      'date': date.toIso8601String(),
+                      "project": selectedProject,
+                      "task": selectedTask,
+                      "time": time,
+                      "notes": notes,
+                      "date": DateTime.now()
+                          .toString()
+                          .split(" ")[0],
                     });
 
                     Navigator.pop(context);
@@ -424,59 +303,37 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
   }
 }
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 /// PROJECT SCREEN
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
-class ProjectScreen extends StatefulWidget {
+class ProjectScreen extends StatelessWidget {
   const ProjectScreen({super.key});
 
   @override
-  State<ProjectScreen> createState() => _ProjectScreenState();
-}
-
-class _ProjectScreenState extends State<ProjectScreen> {
-  final projectsBox = Hive.box('projects');
-
-  @override
   Widget build(BuildContext context) {
+    final projectsBox = Hive.box('projects');
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Projects')),
+      appBar: AppBar(title: const Text("Projects")),
 
       body: ValueListenableBuilder(
         valueListenable: projectsBox.listenable(),
-
         builder: (context, Box box, _) {
           if (box.isEmpty) {
-            return const Center(child: Text('No projects'));
+            return const Center(child: Text("No projects"));
           }
 
           return ListView.builder(
             itemCount: box.length,
-
-            itemBuilder: (_, index) {
+            itemBuilder: (context, index) {
               final key = box.keyAt(index);
 
-              return Card(
-                margin:
-                    const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-
-                color: Colors.white,
-
-                child: ListTile(
-                  title: Text(box.get(key).toString()),
-
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete,
-                        color: Color(0xFF1565C0)),
-                    onPressed: () {
-                      box.delete(key);
-                    },
-                  ),
+              return ListTile(
+                title: Text(box.get(key)),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () => box.delete(key),
                 ),
               );
             },
@@ -486,103 +343,69 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
-        onPressed: () => _showAddProjectDialog(),
+        onPressed: () => _addProject(context, projectsBox),
       ),
     );
   }
 
-//////////////////////////////////////////////////////////////
-/// ADD PROJECT DIALOG
-//////////////////////////////////////////////////////////////
-
-  void _showAddProjectDialog() {
-    String projectName = '';
+  void _addProject(BuildContext context, Box box) {
+    String name = "";
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Add Project'),
-
+        title: const Text("Add Project"),
         content: TextField(
-          autofocus: true,
-          onChanged: (val) => projectName = val,
-          decoration: const InputDecoration(labelText: 'Project Name'),
+          onChanged: (v) => name = v,
         ),
-
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
-
+              child: const Text("Cancel")),
           ElevatedButton(
+            child: const Text("Add"),
             onPressed: () {
-              if (projectName.isNotEmpty) {
-                projectsBox.add(projectName);
-              }
-
+              if (name.isNotEmpty) box.add(name);
               Navigator.pop(context);
             },
-
-            child: const Text('Add'),
-          ),
+          )
         ],
       ),
     );
   }
 }
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 /// TASK SCREEN
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
-class TaskScreen extends StatefulWidget {
+class TaskScreen extends StatelessWidget {
   const TaskScreen({super.key});
 
   @override
-  State<TaskScreen> createState() => _TaskScreenState();
-}
-
-class _TaskScreenState extends State<TaskScreen> {
-  final tasksBox = Hive.box('tasks');
-
-  @override
   Widget build(BuildContext context) {
+    final tasksBox = Hive.box('tasks');
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Tasks')),
+      appBar: AppBar(title: const Text("Tasks")),
 
       body: ValueListenableBuilder(
         valueListenable: tasksBox.listenable(),
-
         builder: (context, Box box, _) {
           if (box.isEmpty) {
-            return const Center(child: Text('No tasks'));
+            return const Center(child: Text("No tasks"));
           }
 
           return ListView.builder(
             itemCount: box.length,
-
-            itemBuilder: (_, index) {
+            itemBuilder: (context, index) {
               final key = box.keyAt(index);
 
-              return Card(
-                margin:
-                    const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-
-                color: Colors.white,
-
-                child: ListTile(
-                  title: Text(box.get(key).toString()),
-
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete,
-                        color: Color(0xFF1565C0)),
-                    onPressed: () {
-                      box.delete(key);
-                    },
-                  ),
+              return ListTile(
+                title: Text(box.get(key)),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () => box.delete(key),
                 ),
               );
             },
@@ -592,45 +415,32 @@ class _TaskScreenState extends State<TaskScreen> {
 
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
-        onPressed: () => _showAddTaskDialog(),
+        onPressed: () => _addTask(context, tasksBox),
       ),
     );
   }
 
-//////////////////////////////////////////////////////////////
-/// ADD TASK DIALOG
-//////////////////////////////////////////////////////////////
-
-  void _showAddTaskDialog() {
-    String taskName = '';
+  void _addTask(BuildContext context, Box box) {
+    String name = "";
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Add Task'),
-
+        title: const Text("Add Task"),
         content: TextField(
-          autofocus: true,
-          onChanged: (val) => taskName = val,
-          decoration: const InputDecoration(labelText: 'Task Name'),
+          onChanged: (v) => name = v,
         ),
-
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
-
+              child: const Text("Cancel")),
           ElevatedButton(
+            child: const Text("Add"),
             onPressed: () {
-              if (taskName.isNotEmpty) {
-                tasksBox.add(taskName);
-              }
-
+              if (name.isNotEmpty) box.add(name);
               Navigator.pop(context);
             },
-
-            child: const Text('Add'),
-          ),
+          )
         ],
       ),
     );
